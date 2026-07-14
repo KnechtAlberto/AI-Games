@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="theme-color" content="#080d2b" />
+<title>Sand Sort</title>
+<style>
+:root{--bg:#080d2b;--panel:#121b46;--line:#6e7fd8;--text:#f8f7ff;--muted:#aeb9ec;--accent:#8b5cf6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at 50% 0,#1b2460 0,#080d2b 52%,#05081d 100%);color:var(--text);font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded",system-ui,sans-serif;overscroll-behavior:none}
+body{min-height:100svh;padding:env(safe-area-inset-top) 12px calc(14px + env(safe-area-inset-bottom));display:flex;justify-content:center}
+.app{width:min(100%,620px);display:flex;flex-direction:column;min-height:100svh}
+header{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;padding:10px 0 4px}
+h1{font-size:22px;text-align:center;margin:0}.round{border:1px solid #7384de;background:#27336e;color:white;border-radius:16px;height:44px;font-size:22px;box-shadow:inset 0 1px #9faafb,0 5px 15px #0005}.level{text-align:center;font-weight:800;font-size:15px;color:#d8dcff;margin:5px 0 4px}.sub{text-align:center;color:var(--muted);font-size:13px;min-height:18px;margin-bottom:8px}
+.board{flex:1;display:flex;align-content:center;justify-content:center;align-items:center;gap:18px 13px;flex-wrap:wrap;padding:12px 2px 18px}.tube{position:relative;width:54px;height:154px;border:3px solid #7083d6;border-top-width:2px;border-radius:11px 11px 22px 22px;background:linear-gradient(90deg,#fff1 0,#fff0 28%,#fff1 50%,#fff0 70%);box-shadow:inset 0 0 0 2px #11194a,0 9px 18px #0006;overflow:hidden;transition:.15s transform,.15s filter}.tube:before{content:"";position:absolute;z-index:4;left:-6px;right:-6px;top:-5px;height:10px;border:3px solid #7d8ee3;border-radius:50%;background:#101743}.tube.selected{transform:translateY(-13px) scale(1.04);filter:drop-shadow(0 8px 10px #8b5cf688)}.tube.valid{box-shadow:inset 0 0 0 2px #11194a,0 0 0 3px #54e2b4,0 9px 18px #0006}.layer{position:absolute;left:3px;right:3px;height:24.7%;bottom:calc(var(--i)*24.7%);background:var(--c);border-top:1px solid #ffffff33;box-shadow:inset 8px 0 #fff1,inset -5px 0 #0002}.tube.done{animation:pulse .7s ease}.tube.done:after{content:"✓";position:absolute;z-index:5;top:45px;left:10px;width:29px;height:29px;display:grid;place-items:center;border-radius:50%;background:#19bd87;color:white;font-weight:900;border:2px solid white}@keyframes pulse{50%{transform:scale(1.07)}}
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:#11183cdd;border:1px solid #38468d;border-radius:22px;padding:10px;box-shadow:0 12px 30px #0007;backdrop-filter:blur(12px)}.ctl{min-height:52px;border:0;border-radius:15px;background:#26316d;color:#fff;font-weight:750;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.ctl b{font-size:21px;line-height:20px}.ctl:disabled{opacity:.35}.primary{background:linear-gradient(135deg,#7857ee,#9f51e8)}
+.overlay{position:fixed;inset:0;z-index:10;display:none;place-items:end center;background:#020411a8;backdrop-filter:blur(6px)}.overlay.open{display:grid}.sheet{width:min(100%,620px);max-height:90svh;overflow:auto;background:#121940;border:1px solid #5665b6;border-radius:26px 26px 0 0;padding:20px 18px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -20px 60px #0008}.sheet h2{margin:0 0 16px}.presets{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.preset{border:1px solid #6372c5;background:#202b66;color:white;border-radius:16px;padding:14px;text-align:left}.preset strong{display:block;font-size:16px}.preset span{color:#b8c1ee;font-size:12px}.custom{margin-top:18px;border-top:1px solid #39447f;padding-top:14px}.row{display:grid;grid-template-columns:1fr auto;align-items:center;margin:13px 0}.row input{grid-column:1/3;width:100%;margin-top:8px}.start{width:100%;border:0;border-radius:16px;background:linear-gradient(135deg,#5de0b5,#45b9e9);color:#071631;font-size:17px;font-weight:900;padding:15px;margin-top:10px}.win{text-align:center}.win .emoji{font-size:64px}.stats{display:flex;justify-content:center;gap:22px;color:#c6cef6;margin:14px 0 22px}.toast{position:fixed;left:50%;bottom:105px;transform:translateX(-50%) translateY(20px);background:#000c;color:#fff;padding:10px 14px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;white-space:nowrap;z-index:20}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:380px){.board{gap:14px 9px}.tube{width:49px;height:142px}.controls{gap:5px}.ctl{font-size:11px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><button class="round" id="newBtn" aria-label="Neues Spiel">＋</button><h1>Sand Sort</h1><button class="round" id="settingsBtn" aria-label="Schwierigkeit">⚙︎</button></header>
+<div class="level" id="levelLabel">Mittel</div><div class="sub" id="status">Sortiere jede Farbe in ein eigenes Glas.</div>
+<main class="board" id="board"></main>
+<nav class="controls"><button class="ctl" id="undoBtn"><b>↶</b>Zurück</button><button class="ctl" id="hintBtn"><b>✦</b>Tipp</button><button class="ctl" id="restartBtn"><b>↻</b>Neustart</button><button class="ctl primary" id="shuffleBtn"><b>⚄</b>Neu</button></nav>
+</div>
+<div class="overlay" id="difficulty"><section class="sheet"><h2>Schwierigkeit wählen</h2><div class="presets" id="presets"></div><div class="custom"><h3>Eigene Stufe</h3><div class="row"><label>Farben</label><output id="colorsOut">6</output><input id="colorsRange" type="range" min="3" max="10" value="6"></div><div class="row"><label>Leere Gläser</label><output id="emptyOut">2</output><input id="emptyRange" type="range" min="1" max="3" value="2"></div><div class="row"><label>Durchmischung</label><output id="mixOut">Mittel</output><input id="mixRange" type="range" min="1" max="3" value="2"></div><button class="start" id="customStart">Spiel starten</button></div></section></div>
+<div class="overlay" id="victory"><section class="sheet win"><div class="emoji">🎉</div><h2>Geschafft!</h2><div class="stats"><span id="winMoves"></span><span id="winTime"></span></div><button class="start" id="nextBtn">Neue Runde</button></section></div>
+<div class="toast" id="toast"></div>
+<script>
+const CAP=4;
+const PALETTE=['#ff4c5f','#ff9637','#ffd238','#4fd17b','#34bce8','#5b6df5','#974fe8','#ed58b8','#8e5d3e','#50d6c5'];
+const PRESETS={Leicht:{colors:4,empty:2,mix:1},Mittel:{colors:6,empty:2,mix:2},Schwer:{colors:8,empty:2,mix:3},Knifflig:{colors:10,empty:2,mix:3}};
+let tubes=[],initial=[],history=[],selected=null,moves=0,startTime=0,timerId=null,current={name:'Mittel',...PRESETS.Mittel};
+const $=s=>document.querySelector(s), board=$('#board');
+function clone(v){return v.map(x=>[...x])}
+function solved(){return tubes.every(t=>t.length===0||(t.length===CAP&&t.every(c=>c===t[0])))}
+function tubeDone(t){return t.length===CAP&&t.every(c=>c===t[0])}
+function topRun(t){if(!t.length)return 0;let n=1;for(let i=t.length-2;i>=0&&t[i]===t[t.length-1];i--)n++;return n}
+function canPour(a,b){if(a===b||!tubes[a].length||tubes[b].length===CAP)return false;return !tubes[b].length||tubes[b].at(-1)===tubes[a].at(-1)}
+function doPour(a,b,record=true){if(!canPour(a,b))return false;let n=Math.min(topRun(tubes[a]),CAP-tubes[b].length);if(record)history.push(clone(tubes));for(let i=0;i<n;i++)tubes[b].push(tubes[a].pop());moves++;selected=null;render();if(solved())setTimeout(showVictory,350);return true}
+function tapTube(i){if(selected===null){if(tubes[i].length){selected=i;render()}}else if(selected===i){selected=null;render()}else if(!doPour(selected,i)){selected=tubes[i].length?i:null;render();buzz('Hier passt die Farbe nicht.')}}
+function render(){board.innerHTML='';tubes.forEach((t,i)=>{const el=document.createElement('button');el.className='tube'+(selected===i?' selected':'')+(selected!==null&&canPour(selected,i)?' valid':'')+(tubeDone(t)?' done':'');el.setAttribute('aria-label',`Glas ${i+1}`);t.forEach((c,j)=>{const l=document.createElement('span');l.className='layer';l.style.setProperty('--i',j);l.style.setProperty('--c',PALETTE[c]);el.appendChild(l)});el.onclick=()=>tapTube(i);board.appendChild(el)});$('#undoBtn').disabled=!history.length;$('#status').textContent=`${moves} Züge · ${tubes.filter(tubeDone).length}/${current.colors} Farben fertig`;}
+function validMoves(state){const out=[];for(let a=0;a<state.length;a++)for(let b=0;b<state.length;b++){if(a===b||!state[a].length||state[b].length===CAP)continue;if(!state[b].length||state[b].at(-1)===state[a].at(-1))out.push([a,b])}return out}
+function generate(colors,empty,mix){let state=[];for(let c=0;c<colors;c++)state.push(Array(CAP).fill(c));for(let i=0;i<empty;i++)state.push([]);
+let last='';const steps=colors*(mix===1?7:mix===2?13:20);for(let k=0;k<steps;k++){let possible=[];for(let a=0;a<state.length;a++)for(let b=0;b<state.length;b++){if(a===b||!state[a].length||state[b].length===CAP)continue;let run=topRun(state[a]);let room=CAP-state[b].length;if(run&&room)possible.push([a,b,Math.min(run,room)])}if(!possible.length)break;let choices=possible.filter(x=>`${x[1]}-${x[0]}`!==last);let [a,b,n]=(choices.length?choices:possible)[Math.floor(Math.random()*(choices.length||possible.length))];let move=Math.max(1,Math.min(n,1+Math.floor(Math.random()*n)));for(let z=0;z<move;z++)state[b].push(state[a].pop());last=`${a}-${b}`}
+if(state.every(t=>!t.length||tubeDone(t)))return generate(colors,empty,mix);
+return state.sort(()=>Math.random()-.5)}
+function startGame(opts){current=opts;tubes=generate(opts.colors,opts.empty,opts.mix);initial=clone(tubes);history=[];selected=null;moves=0;startTime=Date.now();clearInterval(timerId);timerId=setInterval(()=>{},1000);$('#levelLabel').textContent=opts.name||`Eigene Stufe · ${opts.colors} Farben`;closeSheets();render()}
+function undo(){if(!history.length)return;tubes=history.pop();moves=Math.max(0,moves-1);selected=null;render()}
+function hint(){let ms=validMoves(tubes);if(!ms.length)return buzz('Kein Zug gefunden. Nutze Zurück.');let scored=ms.map(([a,b])=>({a,b,s:(tubes[b].length?5:0)+(topRun(tubes[a]))+(tubeDone([...tubes[b],tubes[a].at(-1)])?8:0)})).sort((x,y)=>y.s-x.s);selected=scored[0].a;render();setTimeout(()=>{[...board.children][scored[0].b].animate([{transform:'scale(1)'},{transform:'scale(1.1)'},{transform:'scale(1)'}],{duration:600})},50);buzz(`Von Glas ${scored[0].a+1} nach ${scored[0].b+1}.`)}
+function showVictory(){clearInterval(timerId);const sec=Math.floor((Date.now()-startTime)/1000);$('#winMoves').textContent=`${moves} Züge`;$('#winTime').textContent=`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')} Min`;$('#victory').classList.add('open')}
+function buzz(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600);navigator.vibrate?.(20)}
+function closeSheets(){document.querySelectorAll('.overlay').forEach(x=>x.classList.remove('open'))}
+Object.entries(PRESETS).forEach(([name,o])=>{const b=document.createElement('button');b.className='preset';b.innerHTML=`<strong>${name}</strong><span>${o.colors} Farben · ${o.empty} leere Gläser</span>`;b.onclick=()=>startGame({name,...o});$('#presets').appendChild(b)});
+[['colorsRange','colorsOut',v=>v],['emptyRange','emptyOut',v=>v],['mixRange','mixOut',v=>['','Locker','Mittel','Stark'][v]]].forEach(([a,b,f])=>{$('#'+a).oninput=e=>$('#'+b).value=f(e.target.value)});
+$('#settingsBtn').onclick=()=>$('#difficulty').classList.add('open');$('#newBtn').onclick=()=>$('#difficulty').classList.add('open');$('#undoBtn').onclick=undo;$('#hintBtn').onclick=hint;$('#restartBtn').onclick=()=>{tubes=clone(initial);history=[];selected=null;moves=0;startTime=Date.now();render()};$('#shuffleBtn').onclick=()=>startGame(current);$('#nextBtn').onclick=()=>startGame(current);$('#customStart').onclick=()=>startGame({name:'Eigene Stufe',colors:+$('#colorsRange').value,empty:+$('#emptyRange').value,mix:+$('#mixRange').value});
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+startGame(current);
+</script>
+</body></html>
