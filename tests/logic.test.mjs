@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+const CAP=4;
+const done=t=>t.length===CAP&&t.every(x=>x===t[0]);
+const solved=s=>s.every(t=>!t.length||done(t));
+const topRun=t=>{if(!t.length)return 0;let n=1;for(let i=t.length-2;i>=0&&t[i]===t.at(-1);i--)n++;return n};
+const canPour=(s,a,b)=>a!==b&&s[a]?.length&&s[b]?.length<CAP&&(!s[b].length||s[b].at(-1)===s[a].at(-1));
+assert.equal(solved([[1,1,1,1],[]]),true);
+assert.equal(solved([[1,1,2,1],[]]),false);
+assert.equal(topRun([1,2,2,2]),3);
+assert.equal(canPour([[1],[]],0,1),true);
+assert.equal(canPour([[1],[2]],0,1),false);
+assert.equal(canPour([[1,1],[1]],0,1),true);
+console.log('All logic tests passed.');
