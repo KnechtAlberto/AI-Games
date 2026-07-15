@@ -33,6 +33,7 @@ function loadGame() {
 
 const currentStars = () => starsForMoves(moves, par);
 const starText = (count = currentStars()) => '★'.repeat(count) + '☆'.repeat(3 - count);
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function resizeCanvas() {
   const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -68,74 +69,134 @@ function render() {
   saveGame();
 }
 
-function particleStream(start, target, color, amount) {
+function drawSandStream(start, target, color, duration) {
   resizeCanvas();
-  const particles = Array.from({ length: 70 + amount * 35 }, () => ({
-    progress: -Math.random() * 0.2,
-    speed: 0.032 + Math.random() * 0.012,
-    offsetX: (Math.random() - 0.5) * 9,
-    offsetY: (Math.random() - 0.5) * 7,
-    radius: 0.9 + Math.random() * 1.5,
-    alpha: 0.75 + Math.random() * 0.25
-  }));
-  let running = true;
-  function draw() {
+  const started = performance.now();
+  let raf = 0;
+
+  function frame(now) {
+    const elapsed = now - started;
+    const fadeIn = Math.min(1, elapsed / 90);
+    const fadeOut = Math.min(1, Math.max(0, duration - elapsed) / 120);
+    const alpha = fadeIn * fadeOut;
     ctx.clearRect(0, 0, innerWidth, innerHeight);
-    ctx.fillStyle = color;
-    running = false;
-    for (const particle of particles) {
-      particle.progress += particle.speed;
-      if (particle.progress < 0 || particle.progress > 1.05) continue;
-      running = true;
-      const t = Math.min(1, particle.progress);
-      const x = start.x + (target.x - start.x) * t + particle.offsetX * (1 - t);
-      const arc = Math.sin(Math.PI * t) * 18;
-      const y = start.y + (target.y - start.y) * t - arc + particle.offsetY;
-      ctx.globalAlpha = particle.alpha * (1 - Math.max(0, t - 0.82) / 0.18);
+
+    const controlX = start.x + (target.x - start.x) * 0.34;
+    const controlY = Math.min(start.y, target.y) - 8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.globalAlpha = alpha * 0.32;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo(controlX, controlY, target.x, target.y);
+    ctx.stroke();
+
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4.6;
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo(controlX, controlY, target.x, target.y);
+    ctx.stroke();
+
+    for (let i = 0; i < 15; i++) {
+      const t = ((elapsed * 0.0014) + i / 15) % 1;
+      const mt = 1 - t;
+      const x = mt * mt * start.x + 2 * mt * t * controlX + t * t * target.x;
+      const y = mt * mt * start.y + 2 * mt * t * controlY + t * t * target.y;
+      ctx.globalAlpha = alpha * (0.5 + (i % 3) * 0.18);
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(x, y, particle.radius, 0, Math.PI * 2);
+      ctx.arc(x + Math.sin(i * 3.1) * 1.3, y, 1.1 + (i % 2) * 0.55, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-    if (running) requestAnimationFrame(draw);
+
+    if (elapsed < duration) raf = requestAnimationFrame(frame);
     else ctx.clearRect(0, 0, innerWidth, innerHeight);
   }
-  draw();
+
+  raf = requestAnimationFrame(frame);
+  return () => {
+    cancelAnimationFrame(raf);
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+  };
+}
+
+function animateLevels(fromElement, toElement, amount, color, duration) {
+  const sourceLayers = [...fromElement.querySelectorAll('.sand')].slice(-amount);
+  sourceLayers.forEach((layer, index) => {
+    layer.animate([
+      { transform: 'scaleY(1)', opacity: 1 },
+      { transform: 'scaleY(1)', opacity: 1, offset: index / Math.max(1, amount) * 0.25 },
+      { transform: 'scaleY(0)', opacity: 0.18 }
+    ], { duration, easing: 'linear', fill: 'forwards' });
+  });
+
+  const ghost = document.createElement('span');
+  ghost.className = 'sand transfer-fill';
+  ghost.style.setProperty('--c', color);
+  ghost.style.bottom = `${tubes[toElement.dataset.index]?.length * 25}%`;
+  ghost.style.height = `${amount * 25}%`;
+  ghost.style.transform = 'scaleY(0)';
+  ghost.style.transformOrigin = 'bottom';
+  toElement.appendChild(ghost);
+  ghost.animate([
+    { transform: 'scaleY(0)' },
+    { transform: 'scaleY(1)' }
+  ], { duration, easing: 'linear', fill: 'forwards' });
+  return ghost;
 }
 
 async function animatePour(fromIndex, toIndex, color, amount) {
   const fromElement = board.children[fromIndex];
   const toElement = board.children[toIndex];
   if (!fromElement || !toElement || !fromElement.animate) return;
+  fromElement.dataset.index = fromIndex;
+  toElement.dataset.index = toIndex;
 
   const fromRect = fromElement.getBoundingClientRect();
   const toRect = toElement.getBoundingClientRect();
   const direction = toRect.left >= fromRect.left ? 1 : -1;
-  const dx = (toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2) - direction * 22;
-  const dy = toRect.top - fromRect.top - 42;
-  const tilt = direction > 0 ? 68 : -68;
-  const streamStart = {
-    x: fromRect.left + fromRect.width / 2 + dx + direction * 23,
-    y: fromRect.top + 10 + dy
-  };
-  const streamTarget = {
-    x: toRect.left + toRect.width / 2,
-    y: toRect.top + 22
-  };
+  const centerFromX = fromRect.left + fromRect.width / 2;
+  const centerToX = toRect.left + toRect.width / 2;
+  const dx = centerToX - centerFromX - direction * 15;
+  const lift = Math.min(82, Math.max(50, Math.abs(dx) * 0.16 + 48));
+  const tilt = direction > 0 ? 78 : -78;
 
-  fromElement.style.zIndex = '20';
-  fromElement.style.transformOrigin = direction > 0 ? '80% 10%' : '20% 10%';
-  const animation = fromElement.animate([
-    { transform: 'translateY(-14px) rotate(0deg)', offset: 0 },
-    { transform: `translate(${dx}px,${dy}px) rotate(${tilt}deg)`, offset: 0.32 },
-    { transform: `translate(${dx}px,${dy}px) rotate(${tilt}deg)`, offset: 0.72 },
-    { transform: 'translate(0,0) rotate(0deg)', offset: 1 }
-  ], { duration: 760, easing: 'cubic-bezier(.22,.75,.2,1)', fill: 'both' });
+  fromElement.style.zIndex = '30';
+  fromElement.style.transformOrigin = direction > 0 ? '78% 12%' : '22% 12%';
 
-  await new Promise(resolve => setTimeout(resolve, 245));
-  particleStream(streamStart, streamTarget, color, amount);
-  await animation.finished.catch(() => {});
-  animation.cancel();
+  const travel = fromElement.animate([
+    { transform: 'translate(0, -14px) rotate(0deg)', offset: 0 },
+    { transform: `translate(${dx * 0.48}px, ${-lift}px) rotate(${tilt * 0.18}deg)`, offset: 0.34 },
+    { transform: `translate(${dx}px, ${-lift + 4}px) rotate(${tilt}deg)`, offset: 0.56 },
+    { transform: `translate(${dx}px, ${-lift + 4}px) rotate(${tilt}deg)`, offset: 0.82 },
+    { transform: `translate(${dx * 0.45}px, ${-lift * 0.55}px) rotate(${tilt * 0.12}deg)`, offset: 0.93 },
+    { transform: 'translate(0, 0) rotate(0deg)', offset: 1 }
+  ], { duration: 1160, easing: 'cubic-bezier(.22,.74,.22,1)', fill: 'both' });
+
+  await wait(650);
+  const movedRect = fromElement.getBoundingClientRect();
+  const mouth = {
+    x: direction > 0 ? movedRect.right - 7 : movedRect.left + 7,
+    y: movedRect.top + movedRect.height * 0.24
+  };
+  const target = {
+    x: centerToX,
+    y: toRect.top + 15
+  };
+  const pourDuration = 315 + amount * 95;
+  const stopStream = drawSandStream(mouth, target, color, pourDuration);
+  const ghost = animateLevels(fromElement, toElement, amount, color, pourDuration);
+  await wait(pourDuration);
+  stopStream();
+  await travel.finished.catch(() => {});
+  travel.cancel();
+  ghost.remove();
   fromElement.style.zIndex = '';
   fromElement.style.transformOrigin = '';
 }
