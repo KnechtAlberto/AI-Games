@@ -1,1 +1,61 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#071126"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon.svg"><title>AI Games</title><link rel="stylesheet" href="styles.css"></head><body><div id="home" class="screen"><header><h1>AI Games</h1><p>Kleine Spiele fürs iPhone</p></header><main class="game-grid"><button class="game-card" id="openSand"><span class="game-icon">⏳</span><strong>Sand Sort</strong><small>Farben sortieren · 60 Level</small></button><button class="game-card disabled"><span class="game-icon">＋</span><strong>Nächstes Spiel</strong><small>Kommt später</small></button></main></div><div id="game" class="screen hidden"><header class="game-header"><button id="backHome">‹</button><div><h1>Sand Sort</h1><p id="levelText">Level 1</p></div><button id="settings">⚙︎</button></header><div class="meta"><span id="stars">☆☆☆</span><span id="status">0 Züge</span></div><main id="board" class="board"></main><nav><button id="undo">↶<small>Zurück</small></button><button id="hint">✦<small>Tipp</small></button><button id="restart">↻<small>Neu</small></button><button id="levels">☷<small>Level</small></button></nav></div><dialog id="levelDialog"><h2>Level</h2><div id="levelGrid" class="level-grid"></div><button data-close>Schließen</button></dialog><dialog id="settingsDialog"><h2>Spiel</h2><label>Farben <input id="colors" type="range" min="3" max="10" value="6"><output id="colorsOut">6</output></label><label>Schwierigkeit <input id="difficulty" type="range" min="1" max="3" value="2"><output id="difficultyOut">Mittel</output></label><button id="randomGame">Zufallsspiel</button><button id="installBtn" hidden>Zum Home-Bildschirm</button><button data-close>Schließen</button></dialog><dialog id="winDialog"><div class="trophy">🏆</div><h2>Geschafft!</h2><div id="winStars" class="win-stars">★★★</div><p id="winStats"></p><button id="nextLevel">Nächstes Level</button><button data-close>Schließen</button></dialog><canvas id="particles"></canvas><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#071126">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AI Games">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <title>AI Games</title>
+</head>
+<body>
+  <section id="home" class="screen hub">
+    <header class="hub-header">
+      <span class="brand-mark">AI</span>
+      <div><h1>AI Games</h1><p>Kleine Spiele fürs iPhone</p></div>
+    </header>
+    <main class="game-grid">
+      <button class="game-card" id="openSand">
+        <span class="game-preview"><i></i><i></i><i></i></span>
+        <strong>Sand Sort</strong><small>60 lösbare Level · offline spielbar</small>
+      </button>
+      <button class="game-card disabled" disabled><span class="game-icon">＋</span><strong>Nächstes Spiel</strong><small>Platzhalter</small></button>
+    </main>
+    <button id="installBtn" class="install" hidden>Auf dem iPhone installieren</button>
+  </section>
+
+  <section id="game" class="screen hidden">
+    <header class="game-header">
+      <button id="backHome" aria-label="Zurück zur Spielauswahl">‹</button>
+      <div><h1>Sand Sort</h1><p id="levelText">Level 1</p></div>
+      <button id="settings" aria-label="Einstellungen">⚙︎</button>
+    </header>
+    <div class="meta"><span id="stars">★★★</span><span id="status">0 Züge</span></div>
+    <main id="board" class="board" aria-label="Spielfeld"></main>
+    <nav>
+      <button id="undo">↶<small>Zurück</small></button>
+      <button id="hint">✦<small>Tipp</small></button>
+      <button id="restart">↻<small>Neu</small></button>
+      <button id="levels">☷<small>Level</small></button>
+    </nav>
+  </section>
+
+  <dialog id="levelDialog"><h2>Level auswählen</h2><div id="levelGrid" class="level-grid"></div><button data-close>Schließen</button></dialog>
+  <dialog id="settingsDialog">
+    <h2>Zufallsspiel</h2>
+    <label>Farben <output id="colorsOut">6</output><input id="colors" type="range" min="3" max="10" value="6"></label>
+    <label>Schwierigkeit <output id="difficultyOut">Mittel</output><input id="difficulty" type="range" min="1" max="3" value="2"></label>
+    <button id="randomGame">Garantiert lösbares Spiel starten</button>
+    <button id="installSettings">Installationshilfe</button>
+    <button data-close>Schließen</button>
+  </dialog>
+  <dialog id="installDialog"><h2>Als App installieren</h2><p id="installText"></p><button data-close>Verstanden</button></dialog>
+  <dialog id="winDialog"><div class="trophy">🏆</div><h2>Geschafft!</h2><div id="winStars" class="win-stars">★★★</div><p id="winStats"></p><button id="nextLevel">Nächstes Level</button><button data-close>Schließen</button></dialog>
+  <canvas id="particles"></canvas>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
