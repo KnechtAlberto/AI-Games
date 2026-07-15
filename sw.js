@@ -1,4 +1,4 @@
-const CACHE = 'ai-games-v6';
+const CACHE = 'ai-games-v7';
 const ASSETS = [
   './',
   './index.html',
