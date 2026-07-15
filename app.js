@@ -1,28 +1,374 @@
-const CAP=4,TOTAL=60,COLORS=['#ff5264','#ff9b38','#ffd43b','#4ed17c','#36bfe8','#6576f4','#9b58e7','#ee63b5','#8d6347','#4bd4c3'];
-const $=s=>document.querySelector(s),board=$('#board');let tubes=[],initial=[],history=[],selected=null,moves=0,start=0,current=1,mode='campaign',deferredPrompt;
-const clone=s=>s.map(t=>[...t]);const done=t=>t.length===CAP&&t.every(x=>x===t[0]);const solved=s=>s.every(t=>!t.length||done(t));
-function rng(seed){let x=seed>>>0;return()=>((x=Math.imul(x,1664525)+1013904223>>>0)/4294967296)}
-function topRun(t){if(!t.length)return 0;let n=1;for(let i=t.length-2;i>=0&&t[i]===t.at(-1);i--)n++;return n}
-function canPour(s,a,b){return a!==b&&s[a]?.length&&s[b]?.length<CAP&&(!s[b].length||s[b].at(-1)===s[a].at(-1))}
-function moveState(s,a,b){if(!canPour(s,a,b))return null;const n=Math.min(topRun(s[a]),CAP-s[b].length),next=clone(s);for(let i=0;i<n;i++)next[b].push(next[a].pop());return next}
-function key(s){return s.map(t=>t.join('')).join('|')}
-function isSolvable(startState,max=180000){const q=[startState],seen=new Set([key(startState)]);for(let i=0;i<q.length&&seen.size<max;i++){const s=q[i];if(solved(s))return true;for(let a=0;a<s.length;a++)for(let b=0;b<s.length;b++){const n=moveState(s,a,b);if(!n)continue;const k=key(n);if(!seen.has(k)){seen.add(k);q.push(n)}}}return false}
-function generate(colors,empties,difficulty,seed){const r=rng(seed);for(let attempt=0;attempt<40;attempt++){let s=[];for(let c=0;c<colors;c++)s.push(Array(CAP).fill(c));for(let i=0;i<empties;i++)s.push([]);const steps=colors*(difficulty===1?7:difficulty===2?12:18);let last='';for(let i=0;i<steps;i++){let opts=[];for(let a=0;a<s.length;a++)for(let b=0;b<s.length;b++){if(a===b||!s[a].length||s[b].length===CAP)continue;const rev=`${b}-${a}`;if(rev===last)continue;opts.push([a,b])}if(!opts.length)break;const [a,b]=opts[Math.floor(r()*opts.length)],n=Math.min(topRun(s[a]),CAP-s[b].length);for(let j=0;j<Math.max(1,Math.floor(r()*n)+1);j++)s[b].push(s[a].pop());last=`${a}-${b}`}s=s.sort(()=>r()-.5);if(!solved(s)&&isSolvable(s))return s}return generate(colors,empties,Math.max(1,difficulty-1),seed+999)}
-function levelConfig(n){return{colors:Math.min(10,3+Math.floor((n-1)/8)),empties:n<25?2:3,difficulty:n<12?1:n<35?2:3,seed:n*7919+17}}
-function starThresholds(){const c=tubes.length-(mode==='campaign'?levelConfig(current).empties:2);return[c*5,c*8]}
-function liveStars(){const[a,b]=starThresholds();return moves<=a?'★★★':moves<=b?'★★☆':'★☆☆'}
-function save(){localStorage.setItem('sand-save',JSON.stringify({tubes,initial,history,moves,start,current,mode}))}
-function load(){try{const s=JSON.parse(localStorage.getItem('sand-save'));if(!s)return false;({tubes,initial,history,moves,start,current,mode}=s);return true}catch{return false}}
-function render(){board.innerHTML='';tubes.forEach((t,i)=>{const el=document.createElement('button');el.className='tube'+(selected===i?' selected':'')+(selected!==null&&canPour(tubes,selected,i)?' valid':'');t.forEach((c,j)=>{const d=document.createElement('span');d.className='sand';d.style.setProperty('--i',j);d.style.setProperty('--c',COLORS[c]);el.appendChild(d)});el.onclick=()=>tap(i);board.appendChild(el)});$('#status').textContent=`${moves} Züge`;$('#stars').textContent=liveStars();$('#levelText').textContent=mode==='campaign'?`Level ${current}`:'Zufallsspiel';save()}
-function particles(from,to,color){const c=$('#particles'),ctx=c.getContext('2d'),dpr=devicePixelRatio;c.width=innerWidth*dpr;c.height=innerHeight*dpr;ctx.scale(dpr,dpr);const p=Array.from({length:120},()=>({x:from.x+(Math.random()-.5)*18,y:from.y,vx:(to.x-from.x)/28+(Math.random()-.5)*2,vy:-2-Math.random()*2,g:.35+Math.random()*.18,r:1+Math.random()*2}));let f=0;function frame(){ctx.clearRect(0,0,innerWidth,innerHeight);ctx.fillStyle=color;p.forEach(o=>{o.vy+=o.g;o.x+=o.vx;o.y+=o.vy;ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,Math.PI*2);ctx.fill()});if(f++<34)requestAnimationFrame(frame);else ctx.clearRect(0,0,innerWidth,innerHeight)}frame()}
-function tap(i){if(selected===null){if(tubes[i].length){selected=i;navigator.vibrate?.(12);render()}return}if(i===selected){selected=null;render();return}if(!canPour(tubes,selected,i)){selected=tubes[i].length?i:null;navigator.vibrate?.([10,30,10]);render();return}const a=selected,from=board.children[a].getBoundingClientRect(),to=board.children[i].getBoundingClientRect(),color=COLORS[tubes[a].at(-1)];history.push(clone(tubes));tubes=moveState(tubes,a,i);moves++;selected=null;particles({x:from.x+from.width/2,y:from.y+18},{x:to.x+to.width/2,y:to.y+30},color);navigator.vibrate?.(20);render();if(solved(tubes))setTimeout(win,450)}
-function startLevel(n){current=n;mode='campaign';const c=levelConfig(n);tubes=generate(c.colors,c.empties,c.difficulty,c.seed);initial=clone(tubes);history=[];moves=0;start=Date.now();selected=null;showGame();render()}
-function startRandom(){const colors=+$('#colors').value,difficulty=+$('#difficulty').value;mode='random';tubes=generate(colors,2,difficulty,Date.now());initial=clone(tubes);history=[];moves=0;start=Date.now();selected=null;closeDialogs();showGame();render()}
-function win(){const elapsed=Math.floor((Date.now()-start)/1000),stars=liveStars();if(mode==='campaign'){const progress=JSON.parse(localStorage.getItem('sand-progress')||'{}');progress[current]=Math.max(progress[current]||0,stars.replaceAll('☆','').length);localStorage.setItem('sand-progress',JSON.stringify(progress))}$('#winStars').textContent=stars;$('#winStats').textContent=`${moves} Züge · ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')} Min`;$('#winDialog').showModal();navigator.vibrate?.([30,40,30])}
-function undo(){if(!history.length)return;tubes=history.pop();moves=Math.max(0,moves-1);selected=null;render()}
-function hint(){for(let a=0;a<tubes.length;a++)for(let b=0;b<tubes.length;b++)if(canPour(tubes,a,b)){selected=a;render();board.children[b].animate([{transform:'scale(1)'},{transform:'scale(1.12)'},{transform:'scale(1)'}],{duration:650});return}}
-function showGame(){$('#home').classList.add('hidden');$('#game').classList.remove('hidden')}
-function showHome(){$('#game').classList.add('hidden');$('#home').classList.remove('hidden')}
-function closeDialogs(){document.querySelectorAll('dialog[open]').forEach(d=>d.close())}
-function buildLevels(){const p=JSON.parse(localStorage.getItem('sand-progress')||'{}'),g=$('#levelGrid');g.innerHTML='';for(let i=1;i<=TOTAL;i++){const b=document.createElement('button');b.textContent=p[i]?`${i}\n${'★'.repeat(p[i])}`:i;b.className=p[i]?'done':'';b.onclick=()=>{startLevel(i);closeDialogs()};g.appendChild(b)}}
-$('#openSand').onclick=()=>load()?(showGame(),render()):startLevel(1);$('#backHome').onclick=showHome;$('#undo').onclick=undo;$('#hint').onclick=hint;$('#restart').onclick=()=>{tubes=clone(initial);history=[];moves=0;start=Date.now();render()};$('#levels').onclick=()=>{buildLevels();$('#levelDialog').showModal()};$('#settings').onclick=()=>$('#settingsDialog').showModal();$('#randomGame').onclick=startRandom;$('#nextLevel').onclick=()=>{closeDialogs();startLevel(Math.min(TOTAL,current+1))};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());$('#colors').oninput=e=>$('#colorsOut').textContent=e.target.value;$('#difficulty').oninput=e=>$('#difficultyOut').textContent=['','Leicht','Mittel','Schwer'][e.target.value];window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').hidden=false});$('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('#installBtn').hidden=true}};if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+import {
+  CAPACITY,
+  canPour,
+  cloneState,
+  generateSolvablePuzzle,
+  isSolved,
+  pour,
+  starsForMoves
+} from './engine.js';
+
+const TOTAL_LEVELS = 60;
+const COLORS = ['#ff5264','#ff9b38','#ffd43b','#4ed17c','#36bfe8','#6576f4','#9b58e7','#ee63b5','#8d6347','#4bd4c3'];
+const $ = selector => document.querySelector(selector);
+const board = $('#board');
+const canvas = $('#particles');
+const ctx = canvas.getContext('2d');
+
+let tubes = [];
+let initial = [];
+let history = [];
+let solution = [];
+let selected = null;
+let moves = 0;
+let startedAt = 0;
+let currentLevel = 1;
+let mode = 'campaign';
+let par = 1;
+let busy = false;
+let deferredPrompt = null;
+
+function levelConfig(level) {
+  return {
+    colors: Math.min(10, 3 + Math.floor((level - 1) / 8)),
+    emptyTubes: level < 25 ? 2 : 3,
+    difficulty: level < 12 ? 1 : level < 35 ? 2 : 3,
+    seed: level * 7919 + 17
+  };
+}
+
+function progress() {
+  try { return JSON.parse(localStorage.getItem('sand-progress') || '{}'); }
+  catch { return {}; }
+}
+
+function saveProgress(value) {
+  localStorage.setItem('sand-progress', JSON.stringify(value));
+}
+
+function saveGame() {
+  localStorage.setItem('sand-save-v2', JSON.stringify({
+    tubes, initial, history, solution, moves, startedAt, currentLevel, mode, par
+  }));
+}
+
+function loadGame() {
+  try {
+    const value = JSON.parse(localStorage.getItem('sand-save-v2'));
+    if (!value?.tubes?.length) return false;
+    ({ tubes, initial, history, solution, moves, startedAt, currentLevel, mode, par } = value);
+    selected = null;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function currentStars() {
+  return starsForMoves(moves, par);
+}
+
+function starText(count = currentStars()) {
+  return '★'.repeat(count) + '☆'.repeat(3 - count);
+}
+
+function resizeCanvas() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.round(innerWidth * dpr);
+  canvas.height = Math.round(innerHeight * dpr);
+  canvas.style.width = `${innerWidth}px`;
+  canvas.style.height = `${innerHeight}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function render() {
+  board.innerHTML = '';
+  tubes.forEach((tube, index) => {
+    const element = document.createElement('button');
+    element.className = 'tube';
+    if (selected === index) element.classList.add('selected');
+    if (selected !== null && canPour(tubes, selected, index)) element.classList.add('valid');
+    element.setAttribute('aria-label', `Glas ${index + 1}`);
+
+    tube.forEach((color, layerIndex) => {
+      const layer = document.createElement('span');
+      layer.className = 'sand';
+      layer.style.setProperty('--i', layerIndex);
+      layer.style.setProperty('--c', COLORS[color]);
+      element.appendChild(layer);
+    });
+
+    element.onclick = () => tapTube(index);
+    board.appendChild(element);
+  });
+
+  $('#status').textContent = `${moves} Züge · Par ${par}`;
+  $('#stars').textContent = starText();
+  $('#levelText').textContent = mode === 'campaign' ? `Level ${currentLevel}` : 'Zufallsspiel';
+  $('#undo').disabled = history.length === 0 || busy;
+  saveGame();
+}
+
+function particleStream(fromRect, toRect, color, amount) {
+  resizeCanvas();
+  const startX = fromRect.left + fromRect.width / 2;
+  const startY = fromRect.top + 24;
+  const targetX = toRect.left + toRect.width / 2;
+  const targetY = toRect.top + 36;
+  const particles = Array.from({ length: 90 + amount * 45 }, () => ({
+    x: startX + (Math.random() - 0.5) * 14,
+    y: startY + Math.random() * 10,
+    vx: (targetX - startX) / (28 + Math.random() * 8) + (Math.random() - 0.5) * 1.5,
+    vy: -2.2 - Math.random() * 2.3,
+    gravity: 0.31 + Math.random() * 0.15,
+    radius: 0.8 + Math.random() * 1.7,
+    alpha: 0.75 + Math.random() * 0.25
+  }));
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    ctx.fillStyle = color;
+    for (const particle of particles) {
+      particle.vy += particle.gravity;
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.alpha *= 0.985;
+      ctx.globalAlpha = particle.alpha;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (frame++ < 42) requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  }
+  draw();
+}
+
+async function animatePour(fromIndex, toIndex, color, amount) {
+  const fromElement = board.children[fromIndex];
+  const toElement = board.children[toIndex];
+  const fromRect = fromElement.getBoundingClientRect();
+  const toRect = toElement.getBoundingClientRect();
+  const direction = toRect.left >= fromRect.left ? 1 : -1;
+
+  fromElement.style.zIndex = '20';
+  const dx = (toRect.left - fromRect.left) * 0.55;
+  const tilt = direction > 0 ? 58 : -58;
+  const animation = fromElement.animate([
+    { transform: 'translateY(-14px) rotate(0deg)' },
+    { transform: `translate(${dx}px,-44px) rotate(${tilt}deg)` },
+    { transform: `translate(${dx}px,-44px) rotate(${tilt}deg)` },
+    { transform: 'translate(0,0) rotate(0deg)' }
+  ], { duration: 620, easing: 'cubic-bezier(.25,.8,.25,1)' });
+
+  setTimeout(() => particleStream(fromRect, toRect, color, amount), 180);
+  await animation.finished.catch(() => {});
+  fromElement.style.zIndex = '';
+}
+
+async function tapTube(index) {
+  if (busy) return;
+  if (selected === null) {
+    if (tubes[index].length) {
+      selected = index;
+      navigator.vibrate?.(10);
+      render();
+    }
+    return;
+  }
+
+  if (selected === index) {
+    selected = null;
+    render();
+    return;
+  }
+
+  if (!canPour(tubes, selected, index)) {
+    selected = tubes[index].length ? index : null;
+    navigator.vibrate?.([10, 25, 10]);
+    render();
+    return;
+  }
+
+  busy = true;
+  const from = selected;
+  const result = pour(tubes, from, index);
+  const color = COLORS[tubes[from][tubes[from].length - 1]];
+  history.push(cloneState(tubes));
+  selected = null;
+
+  await animatePour(from, index, color, result.amount);
+  tubes = result.state;
+  moves++;
+  busy = false;
+  navigator.vibrate?.(18);
+  render();
+
+  if (isSolved(tubes)) setTimeout(showWin, 260);
+}
+
+function startPuzzle(puzzle, nextMode, level = currentLevel) {
+  tubes = cloneState(puzzle.state);
+  initial = cloneState(puzzle.state);
+  solution = puzzle.solution.map(move => ({ ...move }));
+  history = [];
+  selected = null;
+  moves = 0;
+  startedAt = Date.now();
+  currentLevel = level;
+  mode = nextMode;
+  par = puzzle.par;
+  showGame();
+  closeDialogs();
+  render();
+}
+
+function startLevel(level) {
+  const config = levelConfig(level);
+  startPuzzle(generateSolvablePuzzle(config), 'campaign', level);
+}
+
+function startRandom() {
+  startPuzzle(generateSolvablePuzzle({
+    colors: Number($('#colors').value),
+    emptyTubes: 2,
+    difficulty: Number($('#difficulty').value),
+    seed: Date.now()
+  }), 'random');
+}
+
+function undo() {
+  if (!history.length || busy) return;
+  tubes = history.pop();
+  selected = null;
+  moves = Math.max(0, moves - 1);
+  render();
+}
+
+function restart() {
+  if (busy) return;
+  tubes = cloneState(initial);
+  history = [];
+  selected = null;
+  moves = 0;
+  startedAt = Date.now();
+  render();
+}
+
+function hint() {
+  if (busy) return;
+  for (const move of solution) {
+    if (canPour(tubes, move.from, move.to)) {
+      selected = move.from;
+      render();
+      board.children[move.to]?.animate(
+        [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+        { duration: 650 }
+      );
+      return;
+    }
+  }
+  for (let from = 0; from < tubes.length; from++) {
+    for (let to = 0; to < tubes.length; to++) {
+      if (canPour(tubes, from, to)) {
+        selected = from;
+        render();
+        board.children[to]?.animate(
+          [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+          { duration: 650 }
+        );
+        return;
+      }
+    }
+  }
+}
+
+function showWin() {
+  const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+  const stars = currentStars();
+  if (mode === 'campaign') {
+    const value = progress();
+    value[currentLevel] = Math.max(value[currentLevel] || 0, stars);
+    saveProgress(value);
+  }
+  $('#winStars').textContent = starText(stars);
+  $('#winStats').textContent = `${moves} Züge · Par ${par} · ${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')} Min`;
+  $('#nextLevel').hidden = mode !== 'campaign';
+  $('#winDialog').showModal();
+  navigator.vibrate?.([25, 35, 25]);
+}
+
+function buildLevels() {
+  const value = progress();
+  const grid = $('#levelGrid');
+  grid.innerHTML = '';
+  for (let level = 1; level <= TOTAL_LEVELS; level++) {
+    const button = document.createElement('button');
+    button.innerHTML = value[level] ? `${level}<small>${'★'.repeat(value[level])}</small>` : String(level);
+    if (value[level]) button.classList.add('done');
+    button.onclick = () => startLevel(level);
+    grid.appendChild(button);
+  }
+}
+
+function showGame() {
+  $('#home').classList.add('hidden');
+  $('#game').classList.remove('hidden');
+}
+
+function showHome() {
+  $('#game').classList.add('hidden');
+  $('#home').classList.remove('hidden');
+}
+
+function closeDialogs() {
+  document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+}
+
+function showInstallHelp() {
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  $('#installText').textContent = standalone
+    ? 'Die App ist bereits installiert.'
+    : 'In Safari unten auf Teilen tippen und anschließend „Zum Home-Bildschirm“ wählen.';
+  $('#installDialog').showModal();
+}
+
+$('#openSand').onclick = () => loadGame() ? (showGame(), render()) : startLevel(1);
+$('#backHome').onclick = showHome;
+$('#undo').onclick = undo;
+$('#hint').onclick = hint;
+$('#restart').onclick = restart;
+$('#levels').onclick = () => { buildLevels(); $('#levelDialog').showModal(); };
+$('#settings').onclick = () => $('#settingsDialog').showModal();
+$('#randomGame').onclick = startRandom;
+$('#nextLevel').onclick = () => startLevel(Math.min(TOTAL_LEVELS, currentLevel + 1));
+$('#installSettings').onclick = showInstallHelp;
+$('#installBtn').onclick = async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    $('#installBtn').hidden = true;
+  } else showInstallHelp();
+};
+
+document.querySelectorAll('[data-close]').forEach(button => {
+  button.onclick = () => button.closest('dialog').close();
+});
+
+$('#colors').oninput = event => $('#colorsOut').textContent = event.target.value;
+$('#difficulty').oninput = event => {
+  $('#difficultyOut').textContent = ['', 'Leicht', 'Mittel', 'Schwer'][event.target.value];
+};
+
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredPrompt = event;
+  $('#installBtn').hidden = false;
+});
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
