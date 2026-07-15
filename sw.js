@@ -1,4 +1,4 @@
-const CACHE = 'ai-games-v7';
+const CACHE = 'ai-games-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -25,29 +25,4 @@ self.addEventListener('activate', event => {
   );
 });
 
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
-
-  const isAppCode = ['document', 'script', 'style'].includes(event.request.destination);
-  if (isAppCode) {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request)
-      .then(cached => cached || fetch(event.request).then(response => {
-        const copy = response.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, copy));
-        return response;
-      }))
-  );
-});
+self.addEventListener('fetch', event =>
