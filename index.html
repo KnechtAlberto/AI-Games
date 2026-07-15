@@ -1,51 +1,10 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#08152f">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Sand Sort">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="styles.css?v=10">
-  <title>AI Games – Sand Sort</title>
-</head>
-<body>
-  <main id="app">
-    <section id="home" class="screen">
-      <header class="brand"><div class="logo">AI</div><div><h1>AI Games</h1><p>Kleine Spiele fürs iPhone</p></div></header>
-      <button id="playCard" class="game-card">
-        <span class="mini-tubes"><i></i><i></i><i></i></span>
-        <strong>Sand Sort</strong>
-        <small>60 Level · offline spielbar</small>
-      </button>
-      <button id="installBtn" class="secondary">Als App installieren</button>
-    </section>
-
-    <section id="game" class="screen hidden">
-      <header class="topbar">
-        <button id="homeBtn" aria-label="Zurück">‹</button>
-        <div><h1>Sand Sort</h1><p id="levelLabel">Level 1</p></div>
-        <button id="settingsBtn" aria-label="Einstellungen">⚙︎</button>
-      </header>
-      <div class="stats"><span id="stars">★★★</span><span id="moves">0 Züge</span></div>
-      <canvas id="gameCanvas" aria-label="Sand-Sort-Spielfeld"></canvas>
-      <nav>
-        <button id="undoBtn">↶<small>Zurück</small></button>
-        <button id="hintBtn">✦<small>Tipp</small></button>
-        <button id="restartBtn">↻<small>Neu</small></button>
-        <button id="levelsBtn">☷<small>Level</small></button>
-      </nav>
-    </section>
-  </main>
-
-  <dialog id="levelsDialog"><h2>Level</h2><div id="levelGrid"></div><button data-close>Schließen</button></dialog>
-  <dialog id="settingsDialog"><h2>Zufallsspiel</h2><label>Farben <output id="colorsOut">5</output><input id="colorsInput" type="range" min="3" max="9" value="5"></label><label>Schwierigkeit <output id="difficultyOut">Mittel</output><input id="difficultyInput" type="range" min="1" max="3" value="2"></label><button id="randomBtn">Neues Spiel starten</button><button data-close>Schließen</button></dialog>
-  <dialog id="winDialog"><div class="trophy">🏆</div><h2>Geschafft!</h2><div id="winStars">★★★</div><p id="winText"></p><button id="nextBtn">Nächstes Level</button><button data-close>Schließen</button></dialog>
-  <dialog id="installDialog"><h2>Auf dem iPhone installieren</h2><p>In Safari auf Teilen tippen und danach „Zum Home-Bildschirm“ wählen.</p><button data-close>Verstanden</button></dialog>
-
-  <script type="module" src="app.js?v=10"></script>
-</body>
-</html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#071126">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Sand Sort</title>
+<style>
