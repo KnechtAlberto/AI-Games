@@ -1,1 +1,348 @@
-import{CAP,clone,solved,canPour,pour,generate,stars}from'./engine.js';const C=['#ff5264','#ff9b38','#ffd43b','#4ed17c','#36bfe8','#6576f4','#9b58e7','#ee63b5','#8d6347','#4bd4c3'],$=s=>document.querySelector(s),cv=$('#game'),x=cv.getContext('2d');let s=[],init=[],hist=[],sel=null,lvl=1,moves=0,par=20,busy=false,boxes=[];const cfg=l=>({colors:Math.min(10,3+Math.floor((l-1)/8)),empties:l<25?2:3,difficulty:l<12?1:l<35?2:3,seed:l*7919+17});function save(){localStorage.setItem('sand-v20',JSON.stringify({s,init,hist,lvl,moves,par}))}function load(){try{let v=JSON.parse(localStorage.getItem('sand-v20'));if(!v?.s)return false;({s,init,hist,lvl,moves,par}=v);return true}catch{return false}}function ui(){$('#meta').textContent=`Level ${lvl} · ${moves} Züge`;let q=stars(moves,par);$('#stars').textContent='★'.repeat(q)+'☆'.repeat(3-q);$('#undo').disabled=!hist.length||busy;save()}function resize(){let d=Math.min(devicePixelRatio||1,2),r=cv.getBoundingClientRect();cv.width=r.width*d;cv.height=r.height*d;x.setTransform(d,0,0,d,0,0);draw()}function layout(){let w=cv.clientWidth,h=cv.clientHeight,n=s.length,cols=n<=6?3:n<=8?4:5,rows=Math.ceil(n/cols),tw=Math.min(58,(w-24-(cols-1)*10)/cols),th=Math.min(164,(h-30-(rows-1)*24)/rows),gx=(w-cols*tw-(cols-1)*10)/2,gy=(h-rows*th-(rows-1)*24)/2;boxes=s.map((_,i)=>({x:gx+i%cols*(tw+10),y:gy+Math.floor(i/cols)*(th+24),w:tw,h:th}))}function path(b){let r=Math.min(16,b.w*.28);x.beginPath();x.moveTo(b.x+r,b.y);x.arcTo(b.x+b.w,b.y,b.x+b.w,b.y+b.h,r);x.arcTo(b.x+b.w,b.y+b.h,b.x,b.y+b.h,r);x.arcTo(b.x,b.y+b.h,b.x,b.y,r);x.arcTo(b.x,b.y,b.x+b.w,b.y,r);x.closePath()}function tube(b,t){x.save();path(b);x.fillStyle='rgba(255,255,255,.035)';x.fill();x.save();path({x:b.x+4,y:b.y+5,w:b.w-8,h:b.h-9});x.clip();let lh=(b.h-12)/CAP;t.forEach((c,i)=>{let y=b.y+b.h-5-(i+1)*lh;x.fillStyle=C[c];x.fillRect(b.x+4,y,b.w-8,lh+1);x.fillStyle='rgba(255,255,255,.14)';x.fillRect(b.x+6,y+2,4,lh-4)});x.restore();x.lineWidth=3;x.strokeStyle='#8295e7';x.stroke();x.beginPath();x.ellipse(b.x+b.w/2,b.y+2,b.w/2+1,4,0,0,Math.PI*2);x.stroke();x.restore()}function draw(a=null){x.clearRect(0,0,cv.clientWidth,cv.clientHeight);layout();s.forEach((t,i)=>{if(!a||i!==a.from)tube(boxes[i],t)});if(a)animDraw(a)}function animDraw(a){let f=boxes[a.from],t=boxes[a.to],d=t.x>=f.x?1:-1,z=a.t,p=0,ang=0,g=0,X=f.x,Y=f.y;if(z<.3){p=z/.3;let e=1-Math.pow(1-p,3);X=f.x+(t.x-f.x-d*f.w*.35)*e;Y=f.y-45*Math.sin(Math.PI*e)-18*e}else if(z<.45){p=(z-.3)/.15;X=t.x-d*f.w*.35;Y=t.y-18;ang=d*68*(1-Math.pow(1-p,3))}else if(z<.8){X=t.x-d*f.w*.35;Y=t.y-18;ang=d*68;g=(z-.45)/.35}else{p=(z-.8)/.2;let e=p*p*(3-2*p);X=(t.x-d*f.w*.35)*(1-e)+f.x*e;Y=(t.y-18)*(1-e)+f.y*e;ang=d*68*(1-e);g=1}x.save();x.translate(X+f.w/2,Y+f.h*.08);x.rotate(ang*Math.PI/180);x.translate(-f.w/2,-f.h*.08);tube({x:0,y:0,w:f.w,h:f.h},a.source);x.restore();if(z>=.45&&z<.8){let sx=X+f.w/2+d*f.w*.42,sy=Y+18,tx=t.x+t.w/2,ty=t.y+18;x.strokeStyle=C[a.color];x.lineCap='round';x.lineWidth=Math.max(5,f.w*.12);x.beginPath();x.moveTo(sx,sy);x.quadraticCurveTo((sx+tx)/2,sy+8,tx,ty);x.stroke();let temp=clone(s),n=Math.round(a.amount*g);for(let i=0;i<n;i++){temp[a.from].pop();temp[a.to].push(a.color)}tube(t,temp[a.to])}}function start(l=1){let p=generate(cfg(l));s=clone(p.state);init=clone(s);hist=[];sel=null;moves=0;par=p.par;lvl=l;ui();draw()}async function tap(i){if(busy)return;if(sel===null){if(s[i].length){sel=i;draw()}return}if(sel===i){sel=null;draw();return}if(!canPour(s,sel,i)){sel=s[i].length?i:null;draw();return}busy=true;let from=sel,r=pour(s,from,i);hist.push(clone(s));sel=null;await new Promise(ok=>{let a={from,to:i,source:clone(s[from]),color:r.color,amount:r.amount,t:0},st=performance.now();function fr(now){a.t=Math.min(1,(now-st)/1050);draw(a);a.t<1?requestAnimationFrame(fr):ok()}requestAnimationFrame(fr)});s=r.state;moves++;busy=false;ui();draw();if(solved(s))setTimeout(win,200)}function win(){let q=stars(moves,par),p=JSON.parse(localStorage.getItem('sand-progress-v20')||'{}');p[lvl]=Math.max(p[lvl]||0,q);localStorage.setItem('sand-progress-v20',JSON.stringify(p));$('#winStars').textContent='★'.repeat(q)+'☆'.repeat(3-q);$('#winStats').textContent=`${moves} Züge · Par ${par}`;$('#winDialog').showModal()}cv.addEventListener('pointerup',e=>{let r=cv.getBoundingClientRect(),X=e.clientX-r.left,Y=e.clientY-r.top,i=boxes.findIndex(b=>X>=b.x&&X<=b.x+b.w&&Y>=b.y&&Y<=b.y+b.h);if(i>=0)tap(i)});$('#undo').onclick=()=>{if(hist.length&&!busy){s=hist.pop();moves=Math.max(0,moves-1);sel=null;ui();draw()}};$('#restart').onclick=()=>{if(!busy){s=clone(init);hist=[];moves=0;sel=null;ui();draw()}};$('#hint').onclick=()=>{};$('#random').onclick=$('#settings').onclick=()=>$('#settingsDialog').showModal();$('#startRandom').onclick=()=>{let p=generate({colors:+$('#colors').value,empties:2,difficulty:+$('#difficulty').value,seed:Date.now()});s=clone(p.state);init=clone(s);hist=[];moves=0;par=p.par;$('#settingsDialog').close();ui();draw()};$('#colors').oninput=e=>$('#colorsOut').textContent=e.target.value;$('#difficulty').oninput=e=>$('#difficultyOut').textContent=['','Leicht','Mittel','Schwer'][e.target.value];$('#levels').onclick=()=>{let g=$('#levelGrid'),p=JSON.parse(localStorage.getItem('sand-progress-v20')||'{}');g.innerHTML='';for(let l=1;l<=60;l++){let b=document.createElement('button');b.textContent=p[l]?`${l}\n${'★'.repeat(p[l])}`:l;b.className=p[l]?'done':'';b.onclick=()=>{start(l);$('#levelDialog').close()};g.appendChild(b)}$('#levelDialog').showModal()};$('#next').onclick=()=>{start(Math.min(60,lvl+1));$('#winDialog').close()};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());new ResizeObserver(resize).observe(cv);window.addEventListener('resize',resize);load()?ui():start(1);resize();if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=20');
+import { CAP, clone, solved, canPour, pour, generate, stars } from './engine.js?v=22';
+
+const COLORS = ['#ff5264','#ff9b38','#ffd43b','#4ed17c','#36bfe8','#6576f4','#9b58e7','#ee63b5','#8d6347','#4bd4c3'];
+const $ = selector => document.querySelector(selector);
+const canvas = $('#game');
+const ctx = canvas.getContext('2d');
+
+let state = [];
+let initial = [];
+let history = [];
+let selected = null;
+let level = 1;
+let moves = 0;
+let par = 20;
+let busy = false;
+let boxes = [];
+
+const configForLevel = value => ({
+  colors: Math.min(10, 3 + Math.floor((value - 1) / 8)),
+  empties: value < 25 ? 2 : 3,
+  difficulty: value < 12 ? 1 : value < 35 ? 2 : 3,
+  seed: value * 7919 + 17
+});
+
+function save() {
+  localStorage.setItem('sand-v22', JSON.stringify({ state, initial, history, level, moves, par }));
+}
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('sand-v22'));
+    if (!saved?.state?.length) return false;
+    ({ state, initial, history, level, moves, par } = saved);
+    selected = null;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function updateUi() {
+  $('#meta').textContent = `Level ${level} · ${moves} Züge`;
+  const rating = stars(moves, par);
+  $('#stars').textContent = '★'.repeat(rating) + '☆'.repeat(3 - rating);
+  $('#undo').disabled = !history.length || busy;
+  save();
+}
+
+function resize() {
+  const ratio = Math.min(devicePixelRatio || 1, 2);
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.round(rect.width * ratio));
+  canvas.height = Math.max(1, Math.round(rect.height * ratio));
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  draw();
+}
+
+function layout() {
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const count = state.length;
+  const columns = count <= 6 ? 3 : count <= 8 ? 4 : 5;
+  const rows = Math.ceil(count / columns);
+  const gapX = 10;
+  const gapY = 24;
+  const tubeWidth = Math.min(58, (width - 24 - (columns - 1) * gapX) / columns);
+  const tubeHeight = Math.min(164, (height - 30 - (rows - 1) * gapY) / rows);
+  const startX = (width - columns * tubeWidth - (columns - 1) * gapX) / 2;
+  const startY = (height - rows * tubeHeight - (rows - 1) * gapY) / 2;
+  boxes = state.map((_, index) => ({
+    x: startX + (index % columns) * (tubeWidth + gapX),
+    y: startY + Math.floor(index / columns) * (tubeHeight + gapY),
+    w: tubeWidth,
+    h: tubeHeight
+  }));
+}
+
+function tubePath(box) {
+  const radius = Math.min(16, box.w * 0.28);
+  ctx.beginPath();
+  ctx.moveTo(box.x + radius, box.y);
+  ctx.arcTo(box.x + box.w, box.y, box.x + box.w, box.y + box.h, radius);
+  ctx.arcTo(box.x + box.w, box.y + box.h, box.x, box.y + box.h, radius);
+  ctx.arcTo(box.x, box.y + box.h, box.x, box.y, radius);
+  ctx.arcTo(box.x, box.y, box.x + box.w, box.y, radius);
+  ctx.closePath();
+}
+
+function drawTube(box, tube, isSelected = false, isValid = false) {
+  const lifted = isSelected ? 12 : 0;
+  const b = { ...box, y: box.y - lifted };
+  ctx.save();
+  if (isSelected) {
+    ctx.shadowColor = '#8b65ff';
+    ctx.shadowBlur = 18;
+  }
+  tubePath(b);
+  ctx.fillStyle = 'rgba(255,255,255,.04)';
+  ctx.fill();
+
+  ctx.save();
+  tubePath({ x: b.x + 4, y: b.y + 5, w: b.w - 8, h: b.h - 9 });
+  ctx.clip();
+  const layerHeight = (b.h - 12) / CAP;
+  tube.forEach((color, index) => {
+    const y = b.y + b.h - 5 - (index + 1) * layerHeight;
+    ctx.fillStyle = COLORS[color];
+    ctx.fillRect(b.x + 4, y, b.w - 8, layerHeight + 1);
+    ctx.fillStyle = 'rgba(255,255,255,.14)';
+    ctx.fillRect(b.x + 6, y + 2, 4, Math.max(1, layerHeight - 4));
+  });
+  ctx.restore();
+
+  ctx.lineWidth = isSelected || isValid ? 4 : 3;
+  ctx.strokeStyle = isSelected ? '#b694ff' : isValid ? '#42d6a5' : '#8295e7';
+  tubePath(b);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(b.x + b.w / 2, b.y + 2, b.w / 2 + 1, 4, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function draw(animation = null) {
+  ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  layout();
+  state.forEach((tube, index) => {
+    if (animation && index === animation.from) return;
+    drawTube(boxes[index], tube, index === selected, selected !== null && canPour(state, selected, index));
+  });
+  if (animation) drawAnimation(animation);
+}
+
+function drawAnimation(animation) {
+  const sourceBox = boxes[animation.from];
+  const targetBox = boxes[animation.to];
+  const direction = targetBox.x >= sourceBox.x ? 1 : -1;
+  const z = animation.progress;
+  let x = sourceBox.x;
+  let y = sourceBox.y;
+  let angle = 0;
+  let poured = 0;
+
+  if (z < 0.30) {
+    const p = z / 0.30;
+    const eased = 1 - Math.pow(1 - p, 3);
+    x = sourceBox.x + (targetBox.x - sourceBox.x - direction * sourceBox.w * 0.35) * eased;
+    y = sourceBox.y - 45 * Math.sin(Math.PI * eased) - 18 * eased;
+  } else if (z < 0.45) {
+    const p = (z - 0.30) / 0.15;
+    x = targetBox.x - direction * sourceBox.w * 0.35;
+    y = targetBox.y - 18;
+    angle = direction * 68 * (1 - Math.pow(1 - p, 3));
+  } else if (z < 0.80) {
+    x = targetBox.x - direction * sourceBox.w * 0.35;
+    y = targetBox.y - 18;
+    angle = direction * 68;
+    poured = (z - 0.45) / 0.35;
+  } else {
+    const p = (z - 0.80) / 0.20;
+    const eased = p * p * (3 - 2 * p);
+    x = (targetBox.x - direction * sourceBox.w * 0.35) * (1 - eased) + sourceBox.x * eased;
+    y = (targetBox.y - 18) * (1 - eased) + sourceBox.y * eased;
+    angle = direction * 68 * (1 - eased);
+    poured = 1;
+  }
+
+  ctx.save();
+  ctx.translate(x + sourceBox.w / 2, y + sourceBox.h * 0.08);
+  ctx.rotate(angle * Math.PI / 180);
+  ctx.translate(-sourceBox.w / 2, -sourceBox.h * 0.08);
+  drawTube({ x: 0, y: 0, w: sourceBox.w, h: sourceBox.h }, animation.source);
+  ctx.restore();
+
+  if (z >= 0.45 && z < 0.80) {
+    const startX = x + sourceBox.w / 2 + direction * sourceBox.w * 0.42;
+    const startY = y + 18;
+    const targetX = targetBox.x + targetBox.w / 2;
+    const targetY = targetBox.y + 18;
+    ctx.strokeStyle = COLORS[animation.color];
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(5, sourceBox.w * 0.12);
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.quadraticCurveTo((startX + targetX) / 2, startY + 8, targetX, targetY);
+    ctx.stroke();
+
+    const preview = clone(state);
+    const count = Math.min(animation.amount, Math.floor(animation.amount * poured + 0.999));
+    for (let i = 0; i < count; i++) {
+      preview[animation.from].pop();
+      preview[animation.to].push(animation.color);
+    }
+    drawTube(targetBox, preview[animation.to]);
+  }
+}
+
+function startLevel(value = 1) {
+  const puzzle = generate(configForLevel(value));
+  state = clone(puzzle.state);
+  initial = clone(state);
+  history = [];
+  selected = null;
+  moves = 0;
+  par = puzzle.par;
+  level = value;
+  updateUi();
+  draw();
+}
+
+async function tapTube(index) {
+  if (busy || index < 0) return;
+  if (selected === null) {
+    if (state[index].length) {
+      selected = index;
+      navigator.vibrate?.(10);
+      draw();
+    }
+    return;
+  }
+  if (selected === index) {
+    selected = null;
+    draw();
+    return;
+  }
+  if (!canPour(state, selected, index)) {
+    selected = state[index].length ? index : null;
+    navigator.vibrate?.([10, 25, 10]);
+    draw();
+    return;
+  }
+
+  busy = true;
+  const from = selected;
+  const result = pour(state, from, index);
+  history.push(clone(state));
+  selected = null;
+  await new Promise(resolve => {
+    const animation = { from, to: index, source: clone(state[from]), color: result.color, amount: result.amount, progress: 0 };
+    const started = performance.now();
+    const frame = now => {
+      animation.progress = Math.min(1, (now - started) / 1050);
+      draw(animation);
+      animation.progress < 1 ? requestAnimationFrame(frame) : resolve();
+    };
+    requestAnimationFrame(frame);
+  });
+  state = result.state;
+  moves++;
+  busy = false;
+  navigator.vibrate?.(18);
+  updateUi();
+  draw();
+  if (solved(state)) setTimeout(showWin, 200);
+}
+
+function tubeAt(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  return boxes.findIndex(box => x >= box.x - 8 && x <= box.x + box.w + 8 && y >= box.y - 20 && y <= box.y + box.h + 8);
+}
+
+canvas.addEventListener('pointerdown', event => {
+  event.preventDefault();
+  tapTube(tubeAt(event.clientX, event.clientY));
+});
+canvas.addEventListener('touchend', event => {
+  event.preventDefault();
+  const touch = event.changedTouches[0];
+  if (touch) tapTube(tubeAt(touch.clientX, touch.clientY));
+}, { passive: false });
+
+$('#undo').onclick = () => {
+  if (!history.length || busy) return;
+  state = history.pop();
+  moves = Math.max(0, moves - 1);
+  selected = null;
+  updateUi();
+  draw();
+};
+$('#restart').onclick = () => {
+  if (busy) return;
+  state = clone(initial);
+  history = [];
+  moves = 0;
+  selected = null;
+  updateUi();
+  draw();
+};
+$('#hint').onclick = () => {
+  if (busy) return;
+  for (let from = 0; from < state.length; from++) {
+    for (let to = 0; to < state.length; to++) {
+      if (canPour(state, from, to)) {
+        selected = from;
+        draw();
+        return;
+      }
+    }
+  }
+};
+$('#random').onclick = $('#settings').onclick = () => $('#settingsDialog').showModal();
+$('#startRandom').onclick = () => {
+  const puzzle = generate({ colors: +$('#colors').value, empties: 2, difficulty: +$('#difficulty').value, seed: Date.now() });
+  state = clone(puzzle.state);
+  initial = clone(state);
+  history = [];
+  selected = null;
+  moves = 0;
+  par = puzzle.par;
+  $('#settingsDialog').close();
+  updateUi();
+  draw();
+};
+$('#colors').oninput = event => $('#colorsOut').textContent = event.target.value;
+$('#difficulty').oninput = event => $('#difficultyOut').textContent = ['', 'Leicht', 'Mittel', 'Schwer'][event.target.value];
+$('#levels').onclick = () => {
+  const grid = $('#levelGrid');
+  const progress = JSON.parse(localStorage.getItem('sand-progress-v22') || '{}');
+  grid.innerHTML = '';
+  for (let value = 1; value <= 60; value++) {
+    const button = document.createElement('button');
+    button.textContent = progress[value] ? `${value}\n${'★'.repeat(progress[value])}` : value;
+    button.className = progress[value] ? 'done' : '';
+    button.onclick = () => { startLevel(value); $('#levelDialog').close(); };
+    grid.appendChild(button);
+  }
+  $('#levelDialog').showModal();
+};
+$('#next').onclick = () => { startLevel(Math.min(60, level + 1)); $('#winDialog').close(); };
+document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => button.closest('dialog').close());
+
+function showWin() {
+  const rating = stars(moves, par);
+  const progress = JSON.parse(localStorage.getItem('sand-progress-v22') || '{}');
+  progress[level] = Math.max(progress[level] || 0, rating);
+  localStorage.setItem('sand-progress-v22', JSON.stringify(progress));
+  $('#winStars').textContent = '★'.repeat(rating) + '☆'.repeat(3 - rating);
+  $('#winStats').textContent = `${moves} Züge · Par ${par}`;
+  $('#winDialog').showModal();
+}
+
+new ResizeObserver(resize).observe(canvas);
+window.addEventListener('resize', resize);
+if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(registrations => registrations.forEach(registration => registration.unregister()));
+load() ? updateUi() : startLevel(1);
+resize();
